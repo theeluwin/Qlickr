@@ -1,0 +1,34 @@
+* {
+    font-family: 'Open Sans', 'Noto Sans KR', sans-serif;
+    letter-spacing: -0.05em;
+}
+body {
+    font-weight: 300;
+}
+
+.v-snackbar--variant-outlined {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+.v-card-title-chip {
+    position: relative;
+    top: -2px;
+}
+
+.text-transform-none {
+    text-transform: none;
+}
+.cursor-pointer {
+    cursor: pointer;
+}
+.container-small {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.container-medium {
+    max-width: 720px;
+    margin: 0 auto;
+}
+.container-large {
+    max-width: 960px;
+    margin: 0 auto;
+}

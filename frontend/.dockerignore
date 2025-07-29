@@ -1,0 +1,9 @@
+.DS_Store
+.dockerignore
+.editorconfig
+.gitattributes
+README.md
+Dockerfile.dev
+Dockerfile.prod
+dist/
+node_modules/

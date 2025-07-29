@@ -1,0 +1,156 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: qlickr-prod-db-container
+    env_file:
+      - ${PWD}/.env.prod
+    volumes:
+      - ${PWD}/shared/dbfiles:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+      interval: 3s
+      timeout: 15s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  redis:
+    image: redis:7-alpine
+    container_name: qlickr-prod-redis-container
+    env_file:
+      - ${PWD}/.env.prod
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - ${PWD}/shared/redisfiles:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 15s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  celery:
+    image: qlickr-prod-backend:celery
+    container_name: qlickr-prod-celery-container
+    build:
+      context: ${PWD}/backend
+      dockerfile: Dockerfile.prod
+    env_file:
+      - ${PWD}/.env.prod
+    command: ["celery", "--app", "project", "worker", "--loglevel=info", "--logfile=/shared/logfiles/celery.log"]
+    volumes:
+      - ${PWD}/shared/logfiles:/shared/logfiles
+    healthcheck:
+      test: ["CMD", "celery", "--app", "project", "inspect", "ping"]
+      interval: 3s
+      timeout: 15s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  flower:
+    image: qlickr-prod-backend:flower
+    container_name: qlickr-prod-flower-container
+    build:
+      context: ${PWD}/backend
+      dockerfile: Dockerfile.prod
+    env_file:
+      - ${PWD}/.env.prod
+    command: ["celery", "--app", "project", "flower", "--uid", "celery"]
+    ports:
+      - 5555:5555
+    volumes:
+      - ${PWD}/shared/logfiles:/shared/logfiles
+    depends_on:
+      celery:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  backend:
+    image: qlickr-prod-backend:linux
+    container_name: qlickr-prod-backend-container
+    platform: linux/amd64
+    build:
+      context: ${PWD}/backend
+      dockerfile: Dockerfile.prod
+    env_file:
+      - ${PWD}/.env.prod
+    volumes:
+      - ${PWD}/shared/staticfiles:/shared/staticfiles
+      - ${PWD}/shared/mediafiles:/shared/mediafiles
+      - ${PWD}/shared/logfiles:/shared/logfiles
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 3s
+      timeout: 15s
+      retries: 5
+    depends_on:
+      celery:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  frontend:
+    image: qlickr-prod-frontend:linux
+    container_name: qlickr-prod-frontend-container
+    platform: linux/amd64
+    build:
+      context: ${PWD}/frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_SITE_TITLE: ${VITE_SITE_TITLE}
+        VITE_LOCALE: ${VITE_LOCALE}
+    env_file:
+      - ${PWD}/.env.prod
+    volumes:
+      - ${PWD}/shared/logfiles:/shared/logfiles
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 3s
+      timeout: 15s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  nginx:
+    image: nginx:1.28-alpine-slim
+    container_name: qlickr-prod-nginx-container
+    env_file:
+      - ${PWD}/.env.prod
+    ports:
+      - 80:80
+    volumes:
+      - ${PWD}/confs/prod.conf:/etc/nginx/conf.d/default.conf
+      - ${PWD}/shared/staticfiles:/shared/staticfiles
+      - ${PWD}/shared/mediafiles:/shared/mediafiles
+      - ${PWD}/shared/logfiles:/shared/logfiles
+      - ${PWD}/shared/certfiles/conf:/etc/letsencrypt
+      - ${PWD}/shared/certfiles/www:/var/www/certbot
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - qlickr-prod-network
+  certbot:
+    image: certbot/certbot:latest
+    container_name: qlickr-prod-certbot-container
+    volumes:
+      - ${PWD}/shared/certfiles/conf:/etc/letsencrypt
+      - ${PWD}/shared/certfiles/www:/var/www/certbot
+    depends_on:
+      - nginx
+    networks:
+      - qlickr-prod-network
+networks:
+  qlickr-prod-network:
+    driver: bridge

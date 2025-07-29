@@ -1,0 +1,10 @@
+*.pyc
+.DS_Store
+.vscode
+.coverage
+.env.dev
+.env.prod
+__pycache__/
+shared/
+dist/
+node_modules/
