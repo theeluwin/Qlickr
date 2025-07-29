@@ -8,6 +8,8 @@ When the quiz begins, the quiz questions appear on students' screens. Students c
 
 Quiz results can be displayed using a chalkboard feature, showing the percentage of students who selected each answer. This helps instructors provide additional explanations for questions with high incorrect response rates.
 
+For the effectiveness of the site, see the paper [Shin et al., "Improving the integrated experience of in-class activities and fine-grained data collection for analysis in a blended learning class", Interactive Learning Environments, Volume 26, Issue 5, pp. 597-612](https://www.tandfonline.com/doi/full/10.1080/10494820.2017.1374980)
+
 ## Gallery
 
 ### Student's view
