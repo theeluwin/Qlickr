@@ -42,7 +42,7 @@ The basic structure is the same as [Pocket Galaxy](https://github.com/theeluwin/
 
 **NEVER** deploy the site with development setting.
 
-1. Create `.env.dev` file (see `.env.sample`)
+1. Create and edit `.env.dev` file (see `.env.sample`)
 
 2. Use alias
 
@@ -80,7 +80,7 @@ The basic structure is the same as [Pocket Galaxy](https://github.com/theeluwin/
 
 **ALWAYS** use SSL.
 
-1. Create `.env.prod` file (see `.env.sample`)
+1. Create and edit `.env.prod` file (see `.env.sample`)
 
 2. For domain setting, you should edit:
 
