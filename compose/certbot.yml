@@ -1,6 +1,7 @@
 services:
   nginx:
     image: nginx:1.28-alpine-slim
+    container_name: qlickr-certbot-nginx-container
     env_file:
       - ${PWD}/.env.prod
     ports:
@@ -12,6 +13,7 @@ services:
       - ${PWD}/shared/certfiles/www:/var/www/certbot
   certbot:
     image: certbot/certbot:latest
+    container_name: qlickr-certbot-certbot-container
     volumes:
       - ${PWD}/shared/certfiles/conf:/etc/letsencrypt
       - ${PWD}/shared/certfiles/www:/var/www/certbot
