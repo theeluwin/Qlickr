@@ -54,7 +54,7 @@ User = get_user_model()
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': ':memory:',
-        }
+        },
     },
 )
 class AppTestCase(TransactionTestCase):
