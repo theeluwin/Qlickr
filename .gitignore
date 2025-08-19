@@ -4,6 +4,7 @@
 .coverage
 .env.dev
 .env.prod
+.venv/
 __pycache__/
 shared/
 dist/
