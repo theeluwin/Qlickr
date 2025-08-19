@@ -1,11 +1,15 @@
 # base image
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # install apt packages
 RUN apt-get update && \
-    apt-get install --assume-yes --no-install-recommends git curl && \
+    apt-get install --assume-yes --no-install-recommends curl procps && \
     apt-get purge --assume-yes --auto-remove && \
     rm -rf /var/lib/apt/lists/*
+
+# install py-spy (outside of uv)
+RUN pip install py-spy
 
 # set envs
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -17,9 +21,11 @@ RUN mkdir /app
 WORKDIR /app
 
 # install pip packages
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip pip install --requirement requirements.txt
+COPY pyproject.toml .
+COPY uv.lock .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 # run
 EXPOSE 8000
-CMD ["./scripts/entrypoint.dev.sh"]
+CMD ["./scripts/entry.api.dev.sh"]

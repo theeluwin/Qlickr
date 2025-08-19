@@ -9,44 +9,77 @@ services:
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
       interval: 3s
-      timeout: 15s
-      retries: 5
+      timeout: 30s
+      retries: 10
+    networks:
+      - qlickr-dev-network
+  bouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: qlickr-dev-bouncer-container
+    env_file:
+      - ${PWD}/.env.dev
+    environment:
+      VERBOSE: "0"
+      LOG_CONNECTIONS: "0"
+      LOG_DISCONNECTIONS: "0"
+      STATS_PERIOD: "0"
+      DB_HOST: db
+      DB_PORT: ${POSTGRES_PORT}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 2000
+      DEFAULT_POOL_SIZE: 100
+      RESERVE_POOL_SIZE: 20
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+      AUTH_TYPE: scram-sha-256
+      AUTH_USER: ${POSTGRES_USER}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-h", "db"]
+      interval: 3s
+      timeout: 30s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - qlickr-dev-network
   redis:
     image: redis:7-alpine
     container_name: qlickr-dev-redis-container
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     env_file:
       - ${PWD}/.env.dev
-    command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - ${PWD}/shared/redisfiles:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
-      timeout: 15s
-      retries: 5
+      timeout: 30s
+      retries: 10
     networks:
       - qlickr-dev-network
   celery:
     image: qlickr-dev-backend:celery
+    container_name: qlickr-dev-celery-container
     build:
       context: ${PWD}/backend
       dockerfile: Dockerfile.dev
-    container_name: qlickr-dev-celery-container
+    command: ./scripts/entry.celery.sh
     env_file:
       - ${PWD}/.env.dev
-    command: ["celery", "--app", "project", "worker", "--loglevel=info", "--logfile=/shared/logfiles/celery.log"]
     volumes:
       - ${PWD}/backend:/app
       - ${PWD}/shared/logfiles:/shared/logfiles
+      - qlickr-dev-celery-venv:/app/.venv
     healthcheck:
-      test: ["CMD", "celery", "--app", "project", "inspect", "ping"]
+      test: ["CMD", "./scripts/health.celery.sh"]
       interval: 3s
-      timeout: 15s
-      retries: 5
+      timeout: 30s
+      retries: 10
     depends_on:
-      db:
+      bouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -54,29 +87,31 @@ services:
       - qlickr-dev-network
   flower:
     image: qlickr-dev-backend:flower
+    container_name: qlickr-dev-flower-container
     build:
       context: ${PWD}/backend
       dockerfile: Dockerfile.dev
-    container_name: qlickr-dev-flower-container
+    command: ./scripts/entry.flower.sh
     env_file:
       - ${PWD}/.env.dev
-    command: ["celery", "--app", "project", "flower", "--uid", "celery"]
     ports:
       - 5555:5555
     volumes:
       - ${PWD}/backend:/app
       - ${PWD}/shared/logfiles:/shared/logfiles
+      - qlickr-dev-flower-venv:/app/.venv
     depends_on:
       celery:
         condition: service_healthy
     networks:
       - qlickr-dev-network
-  backend:
-    image: qlickr-dev-backend
+  backend-api:
+    image: qlickr-dev-backend:api
+    container_name: qlickr-dev-backend-api-container
     build:
       context: ${PWD}/backend
       dockerfile: Dockerfile.dev
-    container_name: qlickr-dev-backend-container
+    command: ./scripts/entry.api.dev.sh
     env_file:
       - ${PWD}/.env.dev
     volumes:
@@ -84,22 +119,58 @@ services:
       - ${PWD}/shared/staticfiles:/shared/staticfiles
       - ${PWD}/shared/mediafiles:/shared/mediafiles
       - ${PWD}/shared/logfiles:/shared/logfiles
+      - qlickr-dev-backend-api-venv:/app/.venv
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      test: ["CMD", "./scripts/health.api.sh"]
       interval: 3s
-      timeout: 15s
-      retries: 5
+      timeout: 30s
+      retries: 10
     depends_on:
       celery:
         condition: service_healthy
     networks:
       - qlickr-dev-network
+  backend-ws:
+    image: qlickr-dev-backend:ws
+    container_name: qlickr-dev-backend-ws-container
+    build:
+      context: ${PWD}/backend
+      dockerfile: Dockerfile.dev
+    command: ./scripts/entry.ws.dev.sh
+    env_file:
+      - ${PWD}/.env.dev
+    volumes:
+      - ${PWD}/backend:/app
+      - ${PWD}/shared/staticfiles:/shared/staticfiles
+      - ${PWD}/shared/mediafiles:/shared/mediafiles
+      - ${PWD}/shared/logfiles:/shared/logfiles
+      - qlickr-dev-backend-ws-venv:/app/.venv
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    healthcheck:
+      test: ["CMD", "./scripts/health.ws.sh"]
+      interval: 3s
+      timeout: 30s
+      retries: 10
+    depends_on:
+      bouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - qlickr-dev-network
   frontend:
     image: qlickr-dev-frontend
+    container_name: qlickr-dev-frontend-container
     build:
       context: ${PWD}/frontend
       dockerfile: Dockerfile.dev
-    container_name: qlickr-dev-frontend-container
     env_file:
       - ${PWD}/.env.dev
     ports:
@@ -109,8 +180,8 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5173/"]
       interval: 3s
-      timeout: 15s
-      retries: 5
+      timeout: 30s
+      retries: 10
     networks:
       - qlickr-dev-network
   nginx:
@@ -126,7 +197,9 @@ services:
       - ${PWD}/shared/mediafiles:/shared/mediafiles
       - ${PWD}/shared/logfiles:/shared/logfiles
     depends_on:
-      backend:
+      backend-api:
+        condition: service_healthy
+      backend-ws:
         condition: service_healthy
       frontend:
         condition: service_healthy
@@ -135,3 +208,8 @@ services:
 networks:
   qlickr-dev-network:
     driver: bridge
+volumes:
+  qlickr-dev-celery-venv:
+  qlickr-dev-flower-venv:
+  qlickr-dev-backend-api-venv:
+  qlickr-dev-backend-ws-venv:

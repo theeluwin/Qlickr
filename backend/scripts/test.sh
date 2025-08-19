@@ -1,8 +1,8 @@
 #!/bin/bash
 
-python manage.py migrate --noinput
-python manage.py collectstatic --noinput
-python manage.py check
-flake8 .
-coverage run manage.py test
-coverage report -m
+uv run python manage.py migrate --noinput
+uv run python manage.py collectstatic --noinput
+uv run python manage.py check
+uv run flake8 .
+uv run coverage run manage.py test
+uv run coverage report -m

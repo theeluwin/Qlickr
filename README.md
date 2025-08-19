@@ -69,13 +69,19 @@ The basic structure is the same as [Pocket Galaxy](https://github.com/theeluwin/
 5. Create admin
 
     ```bash
-    dev run --rm backend python manage.py createsuperuser
+    dev run --rm backend-api python manage.py createsuperuser
     ```
 
 6. Shut down
 
     ```bash
     dev down
+    ```
+
+7. Test
+
+    ```bash
+    dev run --rm backend-api ./scripts/test.sh
     ```
 
 ### Production
@@ -136,7 +142,7 @@ The basic structure is the same as [Pocket Galaxy](https://github.com/theeluwin/
 9. Create admin
 
     ```bash
-    prod run --rm backend python manage.py createsuperuser
+    prod run --rm backend-api python manage.py createsuperuser
     ```
 
 10. Shutdown
@@ -162,7 +168,7 @@ Quizzes can only be activated when the lesson is in the active state. Grading is
 Grading can be done as follows:
 
 ```bash
-prod run --rm backend python manage.py evaluate
+prod run --rm backend-api python manage.py evaluate
 ```
 
 This automatically calculates the student's quiz scores and stores them in the database.

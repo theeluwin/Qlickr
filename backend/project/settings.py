@@ -106,7 +106,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
         },
@@ -127,7 +127,7 @@ LOGGING = {
             'formatter': 'standard',
         },
         'sql': {
-            'level': 'DEBUG',
+            'level': 'DEBUG' if DEBUG else 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': LOG_ROOT / 'django.sql.log',
             'maxBytes': 1024 * 1024 * 10,
@@ -143,7 +143,7 @@ LOGGING = {
             'formatter': 'standard',
         },
         'channels': {
-            'level': 'DEBUG',
+            'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': LOG_ROOT / 'django.channels.log',
             'maxBytes': 1024 * 1024 * 10,
@@ -160,21 +160,21 @@ LOGGING = {
         'django.request': {
             'handlers': ['request'],
             'level': 'ERROR',
-            'propagate': True,
+            'propagate': False,
         },
         'django.db.backends': {
             'handlers': ['sql'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'DEBUG' if DEBUG else 'WARNING',
             'propagate': False,
         },
         'project': {
             'handlers': ['console', 'project'] if DEBUG else ['project'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': True,
+            'level': 'INFO',
+            'propagate': False,
         },
         'channels': {
             'handlers': ['console'] if DEBUG else ['channels'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'WARNING',
             'propagate': False,
         },
     },
@@ -199,6 +199,7 @@ TEMPLATES = [
 
 # database
 POSTGRES_HOST = getenv('POSTGRES_HOST', 'db')
+POSTGRES_BOUNCER = getenv('POSTGRES_BOUNCER', 'bouncer')
 POSTGRES_DB = getenv('POSTGRES_DB', 'postgres')
 POSTGRES_PORT = str(getenv('POSTGRES_PORT', '5432'))
 POSTGRES_USER = getenv('POSTGRES_USER', 'postgres')
@@ -206,11 +207,18 @@ POSTGRES_PASSWORD = getenv('POSTGRES_PASSWORD', '')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': POSTGRES_HOST,
+        'HOST': POSTGRES_HOST if DEBUG else POSTGRES_BOUNCER,
         'NAME': POSTGRES_DB,
         'PORT': POSTGRES_PORT,
         'USER': POSTGRES_USER,
         'PASSWORD': POSTGRES_PASSWORD,
+        'CONN_MAX_AGE': 300,
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {
+            'application_name': 'qlickr-backend',
+            'connect_timeout': 5,
+            'sslmode': 'disable',
+        }
     }
 }
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -227,6 +235,15 @@ CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': CACHE_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 1000,
+                'socket_keepalive': True,
+            },
+            'SOCKET_CONNECT_TIMEOUT': 10,
+            'SOCKET_TIMEOUT': 10,
+        },
     },
 }
 
@@ -296,9 +313,7 @@ SIMPLE_JWT = {
 }
 
 # host
-ALLOWED_HOSTS = ['localhost']
-if HOST != 'localhost':
-    ALLOWED_HOSTS.append(HOST)
+ALLOWED_HOSTS = getenv('ALLOWED_HOSTS', 'localhost').split(',')
 
 # cors
 CORS_ALLOW_ALL_ORIGINS = DEBUG

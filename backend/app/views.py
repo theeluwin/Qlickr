@@ -142,10 +142,13 @@ def api_health(request):
 @permission_classes([IsAuthenticated])
 def api_websocket_ticket(request):
     ticket = str(uuid4())
-    user_id = request.user.id
+    user = request.user
     cache.set(
         f'websocket:ticket:{ticket}',
-        user_id,
+        {
+            'user_id': user.id,
+            'is_staff': user.is_staff,
+        },
         settings.WEBSOCKET_TICKET_TTL,
     )
     return Res({

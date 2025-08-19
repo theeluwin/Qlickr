@@ -34,4 +34,6 @@ class APIWebsocketTicketTestCase(AppTestCase):
         # check ticket
         ticket = res.data['ticket']
         key = f'websocket:ticket:{ticket}'
-        self.assertEqual(cache.get(key), self.user.id)
+        user_data = cache.get(key)
+        self.assertEqual(user_data['user_id'], self.user.id)
+        self.assertEqual(user_data['is_staff'], self.user.is_staff)

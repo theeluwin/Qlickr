@@ -9,7 +9,7 @@ class InstructorConsumer(AsyncWebsocketConsumer):
     GROUP_NAME = 'instructor_group'
 
     async def connect(self):
-        if not self.scope['user'].is_staff:
+        if not self.scope['user_data']['is_staff']:
             await self.close(code=4003)
             return
         await self.channel_layer.group_add(
@@ -37,8 +37,8 @@ class InstructorConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_live_quiz_data(self):
-        from app.models import Quiz
-        from app.serializers import QuizSerializer
+        from app.models import Quiz  # noqa: F401
+        from app.serializers import QuizSerializer  # noqa: F401
         quiz = Quiz.get_live_quiz([
             Quiz.STATE_ACTIVE,
             Quiz.STATE_REVIEWING,
@@ -78,8 +78,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_live_quiz_data(self):
-        from app.models import Quiz
-        from app.serializers import QuizSerializer
+        from app.models import Quiz  # noqa: F401
+        from app.serializers import QuizSerializer  # noqa: F401
         quiz = Quiz.get_live_quiz([
             Quiz.STATE_ACTIVE,
         ])
